@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Атриум: калькулятор стоимости ремонта под ключ</title>
+<meta name="description" content="Интерактивный калькулятор ремонта квартир и офисов: стоимость, налоги и сроки в реальном времени.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config={theme:{extend:{fontFamily:{sans:['Manrope','system-ui','sans-serif']},colors:{ink:'#0a0919',panel:'#13112a',edge:'#2a2650',vio:'#8b5cf6',cy:'#22d3ee',mute:'#9b97c0'}}}}
+</script>
+<style>
+body{background:#0a0919;color:#ebe9fa}
+button:focus-visible,input[type=range]:focus-visible{outline:2px solid #22d3ee;outline-offset:3px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:8px;border-radius:99px;outline:none;cursor:pointer;background:linear-gradient(90deg,#8b5cf6 var(--p,30%),#2a2650 var(--p,30%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;border:5px solid #22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.15);transition:box-shadow .2s}
+input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 0 11px rgba(34,211,238,.22)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:5px solid #22d3ee}
+.mk{width:20px;height:20px;border-radius:6px;border:2px solid #4a4580;transition:.2s}
+.mk.rd{border-radius:50%}
+.peer:checked~div .mk{background-color:#22d3ee;border-color:#22d3ee}
+.peer:checked~div .mk.rd{box-shadow:inset 0 0 0 3px #13112a}
+.peer:checked~div .mk:not(.rd){background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.5l2.5 2.5L10 3.5' fill='none' stroke='%230a0919' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-size:12px;background-position:center;background-repeat:no-repeat}
+.step{display:none}
+.step.on{display:block;animation:rise .35s ease}
+.pop{animation:pop .3s ease}
+.fld{width:100%;border-radius:12px;border:1px solid #2a2650;background:#0a0919;padding:.8rem 1rem;color:#fff;outline:none;transition:.2s}
+.fld:focus{border-color:#22d3ee;box-shadow:0 0 0 3px rgba(34,211,238,.2)}
+.fld.bad{border-color:#f87171;box-shadow:0 0 0 3px rgba(248,113,113,.15)}
+.err{min-height:1.25rem;margin-top:.3rem;font-size:.8rem;color:#fca5a5}
+.ring{stroke-dasharray:227;stroke-dashoffset:227;animation:draw .7s ease forwards}
+.tk{stroke-dasharray:60;stroke-dashoffset:60;animation:draw .5s .5s ease forwards}
+.spin{display:inline-block;width:1em;height:1em;margin-right:.5rem;vertical-align:-.15em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:rot .7s linear infinite}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}}
+@keyframes pop{from{opacity:0;transform:scale(.96) translateY(8px)}}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes rot{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.ring,.tk{stroke-dashoffset:0}}
+</style>
+</head>
+<body class="min-h-screen pb-24 font-sans antialiased lg:pb-0">
+<div aria-hidden="true" class="pointer-events-none fixed inset-0 overflow-hidden">
+  <div class="absolute -left-32 -top-40 h-96 w-96 rounded-full bg-vio/25 blur-[120px]"></div>
+  <div class="absolute -right-40 top-1/3 h-96 w-96 rounded-full bg-cy/15 blur-[120px]"></div>
+</div>
+
+<header class="relative mx-auto flex max-w-6xl items-center justify-between px-5 py-6">
+  <a href="#" class="flex items-center gap-3 text-lg font-extrabold"><span class="grid h-9 w-9 place-items-center rounded-lg bg-gradient-to-br from-vio to-cy text-ink">А</span>Атриум</a>
+  <span class="hidden text-sm text-mute sm:block">Ремонт квартир и офисов под ключ</span>
+</header>
+
+<main class="relative mx-auto max-w-6xl px-5 pb-16">
+  <h1 class="max-w-2xl text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl">Сколько стоит ремонт под ключ? Узнайте за минуту</h1>
+  <p class="mt-4 max-w-xl text-mute">Выберите параметры: стоимость, налоги и срок пересчитываются сразу.</p>
+
+  <div class="mt-10 grid gap-6 lg:grid-cols-[1fr_380px] lg:items-start">
+    <section id="calc" class="rounded-2xl border border-edge bg-panel/80 p-5 backdrop-blur sm:p-8">
+      <nav id="stepper" class="flex items-center gap-1 sm:gap-2" aria-label="Шаги расчёта"></nav>
+      <div class="mt-4 h-1 rounded-full bg-edge"><div id="prog" class="h-1 rounded-full bg-gradient-to-r from-vio to-cy transition-all duration-500"></div></div>
+
+      <div class="mt-8 min-h-[340px]">
+        <div class="step" data-i="0">
+          <h2 class="text-2xl font-bold">Объект и площадь</h2>
+          <p class="mt-1 text-mute">Выберите тип помещения и задайте площадь.</p>
+          <div id="types" class="mt-5 grid gap-3 sm:grid-cols-2"></div>
+          <div class="mt-8">
+            <div class="flex items-end justify-between">
+              <label for="area" class="font-semibold">Площадь помещения</label>
+              <div class="text-4xl font-extrabold tabular-nums text-cy"><span id="areaOut"></span> <span class="text-lg font-semibold text-mute">м²</span></div>
+            </div>
+            <input id="area" type="range" min="20" max="300" step="1" class="mt-5 w-full">
+            <div class="mt-3 flex justify-between text-xs text-mute"><span>20 м²</span><span>160 м²</span><span>300 м²</span></div>
+          </div>
+        </div>
+        <div class="step" data-i="1">
+          <h2 class="text-2xl font-bold">Класс отделки</h2>
+          <p class="mt-1 text-mute">Цена показывает работы и материалы для вашей площади, без опций и НДС.</p>
+          <div id="levels" class="mt-5 grid gap-3 sm:grid-cols-2"></div>
+        </div>
+        <div class="step" data-i="2">
+          <h2 class="text-2xl font-bold">Дополнительные опции</h2>
+          <p class="mt-1 text-mute">Отметьте всё, что нужно. Этот шаг можно пропустить.</p>
+          <div id="opts" class="mt-5 grid gap-3 sm:grid-cols-2"></div>
+        </div>
+        <div class="step" data-i="3">
+          <h2 class="text-2xl font-bold">Проверьте и оформите</h2>
+          <p class="mt-1 text-mute">Любой параметр можно изменить: расчёт справа обновится сразу.</p>
+          <dl id="recap" class="mt-5 divide-y divide-edge rounded-xl border border-edge"></dl>
+        </div>
+      </div>
+
+      <div class="mt-8 flex items-center justify-between">
+        <button id="back" class="rounded-xl border border-edge px-6 py-3 font-semibold transition hover:border-vio hover:bg-vio/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-edge disabled:hover:bg-transparent">Назад</button>
+        <button id="next" class="rounded-xl bg-gradient-to-r from-vio to-cy px-7 py-3 font-bold text-ink shadow-lg shadow-vio/25 transition hover:brightness-110 active:scale-[.97]">Далее</button>
+      </div>
+    </section>
+
+    <aside class="rounded-2xl border border-edge bg-panel p-6 lg:sticky lg:top-6">
+      <p class="text-sm text-mute">Итоговая стоимость</p>
+      <p id="total" class="mt-1 text-4xl font-extrabold tabular-nums tracking-tight sm:text-[2.6rem]"></p>
+      <p id="perM" class="mt-1 text-sm text-mute"></p>
+      <div class="mt-5 flex h-2 overflow-hidden rounded-full bg-edge">
+        <i id="b1" class="block h-full bg-vio transition-all duration-500"></i>
+        <i id="b2" class="block h-full bg-cy transition-all duration-500"></i>
+        <i id="b3" class="block h-full bg-[#5b5791] transition-all duration-500"></i>
+      </div>
+      <dl class="mt-5 space-y-3 text-sm">
+        <div class="flex justify-between gap-3"><dt class="flex items-center gap-2 text-mute"><i class="h-2 w-2 rounded-full bg-vio"></i>Работы и материалы</dt><dd id="rBase" class="font-semibold tabular-nums"></dd></div>
+        <div class="flex justify-between gap-3"><dt class="flex items-center gap-2 text-mute"><i class="h-2 w-2 rounded-full bg-cy"></i>Дополнительные опции</dt><dd id="rExtra" class="font-semibold tabular-nums"></dd></div>
+        <div class="flex justify-between gap-3"><dt class="flex items-center gap-2 text-mute"><i class="h-2 w-2 rounded-full bg-[#5b5791]"></i><span id="rVatL"></span></dt><dd id="rVat" class="font-semibold tabular-nums"></dd></div>
+      </dl>
+      <div class="mt-6 rounded-xl border border-edge bg-white/[.03] p-4">
+        <p class="text-sm text-mute">Срок выполнения</p>
+        <p id="term" class="text-xl font-bold"></p>
+        <p id="termSub" class="mt-1 text-xs text-mute"></p>
+      </div>
+      <button data-order class="mt-6 w-full rounded-xl bg-gradient-to-r from-vio to-cy py-3.5 font-bold text-ink shadow-lg shadow-vio/30 transition hover:brightness-110 hover:shadow-cy/30 active:scale-[.98]">Оформить заказ</button>
+    </aside>
+  </div>
+  <p class="mt-10 text-xs text-mute">Демо-проект. Расчёт ориентировочный и не является публичной офертой.</p>
+</main>
+
+<div class="fixed inset-x-0 bottom-0 z-30 flex items-center justify-between gap-4 border-t border-edge bg-ink/95 px-5 py-3 backdrop-blur lg:hidden">
+  <div><p class="text-xs text-mute">Итого</p><p id="barTotal" class="font-extrabold tabular-nums"></p></div>
+  <button data-order class="rounded-xl bg-gradient-to-r from-vio to-cy px-6 py-3 font-bold text-ink">Оформить</button>
+</div>
+
+<div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div data-close class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+  <div id="panel" class="pop relative w-full max-w-md rounded-2xl border border-edge bg-panel p-6 shadow-2xl shadow-vio/20 sm:p-8">
+    <button data-close aria-label="Закрыть" class="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full text-2xl leading-none text-mute transition hover:bg-white/10 hover:text-white">×</button>
+    <form id="form" novalidate class="space-y-4">
+      <h3 id="mTitle" class="pr-8 text-2xl font-bold">Оформление заказа</h3>
+      <p id="mSum" class="rounded-xl border border-edge bg-white/[.03] p-3 text-sm text-mute"></p>
+      <div>
+        <label for="name" class="mb-1.5 block text-sm font-semibold">Имя</label>
+        <input id="name" class="fld" autocomplete="name" placeholder="Как к вам обращаться" aria-describedby="nameErr">
+        <p id="nameErr" class="err" role="alert"></p>
+      </div>
+      <div>
+        <label for="phone" class="mb-1.5 block text-sm font-semibold">Телефон</label>
+        <input id="phone" class="fld" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 900 123-45-67" aria-describedby="phoneErr">
+        <p id="phoneErr" class="err" role="alert"></p>
+      </div>
+      <button id="send" class="w-full rounded-xl bg-gradient-to-r from-vio to-cy py-3.5 font-bold text-ink shadow-lg shadow-vio/30 transition hover:brightness-110 active:scale-[.98] disabled:opacity-70">Отправить заявку</button>
+    </form>
+    <div id="ok" class="hidden text-center">
+      <svg class="mx-auto h-20 w-20" viewBox="0 0 80 80" fill="none" aria-hidden="true"><circle class="ring" cx="40" cy="40" r="36" stroke="#22d3ee" stroke-width="4"/><path class="tk" d="M24 41l11 11 21-23" stroke="#8b5cf6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h3 class="mt-5 text-2xl font-bold">Заявка принята</h3>
+      <p id="okNum" class="mt-1 text-sm font-semibold text-cy"></p>
+      <p id="okText" class="mt-3 text-mute"></p>
+      <button id="again" class="mt-6 w-full rounded-xl border border-edge py-3 font-semibold transition hover:border-vio hover:bg-vio/10">Новый расчёт</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Настройки: меняйте цены, валюту, НДС и сроки здесь */
+const CFG={locale:'ru-RU',currency:'RUB',vat:0.2,
+ types:[
+  {id:'new',name:'Новостройка',note:'Квартира без отделки',k:1,t:1},
+  {id:'old',name:'Вторичное жильё',note:'Демонтаж и выравнивание',k:1.15,t:1.2},
+  {id:'office',name:'Офис',note:'Open space и переговорные',k:1.2,t:.9},
+  {id:'shop',name:'Коммерческое помещение',note:'Салон, шоурум, кафе',k:1.35,t:1.1}],
+ levels:[
+  {id:'eco',name:'Эконом',note:'Надёжные базовые материалы',rate:11000,d:.55},
+  {id:'std',name:'Стандарт',note:'Оптимум цены и качества',rate:19000,d:.8},
+  {id:'pre',name:'Премиум',note:'Дизайнерские материалы',rate:32000,d:1.1},
+  {id:'lux',name:'Эксклюзив',note:'Индивидуальные решения и авторский надзор',rate:52000,d:1.5}],
+ opts:[
+  {id:'design',name:'Дизайн-проект',note:'Планировка и 3D-визуализации',per:1800,fix:0,days:10},
+  {id:'floor',name:'Тёплый пол',note:'С терморегуляторами в каждой зоне',per:2400,fix:0,days:4},
+  {id:'smart',name:'Умный дом',note:'Свет, шторы, датчики протечки',per:0,fix:140000,days:6},
+  {id:'air',name:'Климат-система',note:'Кондиционирование и вентиляция',per:400,fix:95000,days:5},
+  {id:'furn',name:'Мебель на заказ',note:'Кухня, шкафы, рабочие зоны',per:4500,fix:0,days:14},
+  {id:'clean',name:'Клининг после ремонта',note:'Готово к заселению',per:280,fix:0,days:2}]};
+const STEPS=['Объект','Отделка','Опции','Итог'];
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const fmt=n=>new Intl.NumberFormat(CFG.locale,{style:'currency',currency:CFG.currency,maximumFractionDigits:0}).format(n);
+const r100=n=>Math.round(n/100)*100;
+const pl=(n,f)=>{const a=n%100,m=n%10;return a>10&&a<20?f[2]:m>1&&m<5?f[1]:m===1?f[0]:f[2]};
+const fresh=()=>({step:0,type:'new',level:'std',area:60,opts:new Set(['design'])});
+let S=fresh(),shown=0,raf,opener;
+
+function calc(){
+ const t=CFG.types.find(x=>x.id===S.type),l=CFG.levels.find(x=>x.id===S.level),a=S.area;
+ const chosen=CFG.opts.filter(o=>S.opts.has(o.id));
+ const base=r100(a*l.rate*t.k);
+ let extra=0,days=0;
+ chosen.forEach(o=>{extra+=r100(a*o.per+o.fix);days+=o.days});
+ const sub=base+extra,vat=r100(sub*CFG.vat),total=sub+vat;
+ const work=Math.ceil((14+a*l.d)*t.t)+days,cal=Math.ceil(work*7/5);
+ const end=new Date();end.setDate(end.getDate()+cal);
+ return{t,l,a,chosen,base,extra,vat,total,work,cal,end,perM:Math.round(total/a)};
+}
+
+const paint=v=>{const s=fmt(Math.round(v));$('#total').textContent=s;$('#barTotal').textContent=s};
+function countTo(n){
+ cancelAnimationFrame(raf);
+ if(matchMedia('(prefers-reduced-motion:reduce)').matches){shown=n;return paint(n)}
+ const from=shown,t0=performance.now();
+ (function f(t){const p=Math.min((t-t0)/450,1);shown=from+(n-from)*(1-Math.pow(1-p,3));paint(shown);if(p<1)raf=requestAnimationFrame(f)})(t0);
+}
+
+function update(){
+ const c=calc();
+ countTo(c.total);
+ $('#areaOut').textContent=c.a;
+ $('#area').style.setProperty('--p',(c.a-20)/280*100+'%');
+ $('#rBase').textContent=fmt(c.base);
+ $('#rExtra').textContent=fmt(c.extra);
+ $('#rVatL').textContent='НДС '+Math.round(CFG.vat*100)+'%';
+ $('#rVat').textContent=fmt(c.vat);
+ $('#b1').style.width=c.base/c.total*100+'%';
+ $('#b2').style.width=c.extra/c.total*100+'%';
+ $('#b3').style.width=c.vat/c.total*100+'%';
+ $('#perM').textContent=fmt(c.perM)+' за м²';
+ const wk=Math.ceil(c.cal/7);
+ $('#term').textContent='≈ '+wk+' '+pl(wk,['неделя','недели','недель']);
+ $('#termSub').textContent=c.work+' '+pl(c.work,['рабочий день','рабочих дня','рабочих дней'])+', сдача около '+c.end.toLocaleDateString(CFG.locale,{day:'numeric',month:'long',year:'numeric'});
+ CFG.levels.forEach(l=>$('[data-lv="'+l.id+'"]').textContent='≈ '+fmt(r100(c.a*l.rate*c.t.k)));
+ CFG.opts.forEach(o=>$('[data-op="'+o.id+'"]').textContent='+ '+fmt(r100(c.a*o.per+o.fix))+', '+o.days+' дн.');
+ const rows=[['Объект',c.t.name,0],['Площадь',c.a+' м²',0],['Отделка',c.l.name,1],['Опции',c.chosen.length?c.chosen.map(o=>o.name).join(', '):'не выбраны',2]];
+ $('#recap').innerHTML=rows.map(r=>'<div class="flex items-center justify-between gap-4 px-4 py-3"><dt class="text-mute">'+r[0]+'</dt><dd class="flex-1 text-right font-semibold">'+r[1]+'</dd><button data-go="'+r[2]+'" class="text-sm text-cy hover:underline">Изменить</button></div>').join('');
+}
+
+function card(n,type,v,title,note,on,price){
+ return '<label class="block cursor-pointer"><input class="peer sr-only" type="'+type+'" name="'+n+'" value="'+v+'"'+(on?' checked':'')+'><div class="flex h-full items-start gap-3 rounded-xl border border-edge bg-white/[.02] p-4 transition hover:-translate-y-0.5 hover:border-vio/70 peer-checked:border-cy peer-checked:bg-cy/10 peer-focus-visible:ring-2 peer-focus-visible:ring-vio"><span class="mk '+(type==='radio'?'rd':'')+' mt-0.5 shrink-0"></span><span class="min-w-0 flex-1"><b class="block">'+title+'</b><span class="block text-sm text-mute">'+note+'</span><span class="mt-2 block text-sm font-semibold text-cy">'+(price||'')+'</span></span></div></label>';
+}
+function build(){
+ $('#types').innerHTML=CFG.types.map(t=>card('type','radio',t.id,t.name,t.note,S.type===t.id)).join('');
+ $('#levels').innerHTML=CFG.levels.map(l=>card('level','radio',l.id,l.name,l.note,S.level===l.id,'<span data-lv="'+l.id+'"></span>')).join('');
+ $('#opts').innerHTML=CFG.opts.map(o=>card('opt','checkbox',o.id,o.name,o.note,S.opts.has(o.id),'<span data-op="'+o.id+'"></span>')).join('');
+ $('#area').value=S.area;
+}
+
+function go(i,scroll){
+ S.step=Math.max(0,Math.min(3,i));
+ $$('.step').forEach(s=>s.classList.toggle('on',+s.dataset.i===S.step));
+ $('#prog').style.width=(S.step+1)*25+'%';
+ $('#back').disabled=S.step===0;
+ $('#next').textContent=S.step===3?'Оформить заказ':'Далее';
+ const f=document.activeElement&&document.activeElement.dataset?document.activeElement.dataset.go:null;
+ $('#stepper').innerHTML=STEPS.map((s,k)=>'<button data-go="'+k+'" aria-current="'+(k===S.step?'step':'false')+'" class="flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-semibold transition '+(k===S.step?'bg-vio/20 text-white':'text-mute hover:text-white')+'"><span class="grid h-7 w-7 place-items-center rounded-full text-xs '+(k<=S.step?'bg-gradient-to-br from-vio to-cy text-ink':'bg-edge')+'">'+(k+1)+'</span><span class="'+(k===S.step?'':'hidden sm:inline')+'">'+s+'</span></button>').join('');
+ if(f!=null&&f!==undefined&&$('#stepper [data-go="'+f+'"]'))$('#stepper [data-go="'+f+'"]').focus();
+ if(scroll&&$('#calc').getBoundingClientRect().top<0)$('#calc').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* Модальное окно */
+const rules={
+ name:v=>/^\p{L}[\p{L}\s'’-]+$/u.test(v.trim())?'':'Введите имя: минимум 2 буквы',
+ phone:v=>{const d=v.replace(/\D/g,'');return /^\+?[\d\s()-]+$/.test(v.trim())&&d.length>=10&&d.length<=15?'':'Укажите телефон: от 10 до 15 цифр, например +7 900 123-45-67'}
+};
+function check(id){
+ const el=$('#'+id),msg=rules[id](el.value);
+ $('#'+id+'Err').textContent=msg;
+ el.classList.toggle('bad',!!msg);
+ el.setAttribute('aria-invalid',msg?'true':'false');
+ return !msg;
+}
+function openModal(btn){
+ opener=btn;
+ const c=calc(),wk=Math.ceil(c.cal/7);
+ $('#mSum').textContent=c.t.name+', '+c.a+' м², '+c.l.name+'. Итого '+fmt(c.total)+', срок ≈ '+wk+' '+pl(wk,['неделя','недели','недель'])+'.';
+ $('#ok').classList.add('hidden');
+ $('#form').classList.remove('hidden');
+ const m=$('#modal');m.classList.remove('hidden');m.classList.add('flex');
+ document.body.style.overflow='hidden';
+ setTimeout(()=>$('#name').focus(),60);
+}
+function closeModal(){
+ const m=$('#modal');m.classList.add('hidden');m.classList.remove('flex');
+ document.body.style.overflow='';
+ if(opener)opener.focus();
+}
+/* Замените тело функции на fetch('/api/orders',{method:'POST',body:JSON.stringify(p)}) для реальной отправки */
+const sendOrder=p=>new Promise(r=>setTimeout(()=>{console.log('Заказ:',p);r({id:Math.floor(100000+Math.random()*900000)})},1400));
+
+$('#form').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const ids=['name','phone'],res=ids.map(check);
+ if(res.includes(false))return $('#'+ids[res.indexOf(false)]).focus();
+ const btn=$('#send'),c=calc();
+ btn.disabled=true;btn.innerHTML='<span class="spin"></span>Отправляем…';
+ const order=await sendOrder({name:$('#name').value.trim(),phone:$('#phone').value.trim(),type:c.t.name,area:c.a,level:c.l.name,options:c.chosen.map(o=>o.name),total:c.total});
+ $('#okNum').textContent='Заявка № '+order.id;
+ $('#okText').textContent='Спасибо, '+$('#name').value.trim()+'! Менеджер позвонит на '+$('#phone').value.trim()+' в течение 15 минут: уточнит детали и согласует выезд на замер.';
+ $('#form').classList.add('hidden');
+ $('#ok').classList.remove('hidden');
+ btn.disabled=false;btn.textContent='Отправить заявку';
+ $('#again').focus();
+});
+['name','phone'].forEach(id=>{
+ $('#'+id).addEventListener('blur',()=>$('#'+id).value&&check(id));
+ $('#'+id).addEventListener('input',e=>{
+  if(id==='phone')e.target.value=e.target.value.replace(/[^\d+\-() ]/g,'');
+  if(e.target.classList.contains('bad'))check(id);
+ });
+});
+$('#again').onclick=()=>{
+ closeModal();opener=null;
+ $('#form').reset();
+ ['name','phone'].forEach(id=>{$('#'+id+'Err').textContent='';$('#'+id).classList.remove('bad')});
+ S=fresh();build();update();go(0,true);
+};
+
+/* События */
+document.addEventListener('change',e=>{
+ const t=e.target;
+ if(t.name==='type')S.type=t.value;
+ else if(t.name==='level')S.level=t.value;
+ else if(t.name==='opt'){t.checked?S.opts.add(t.value):S.opts.delete(t.value)}
+ else return;
+ update();
+});
+$('#area').addEventListener('input',e=>{S.area=+e.target.value;update()});
+document.addEventListener('click',e=>{
+ const g=e.target.closest('[data-go]');
+ if(g)return go(+g.dataset.go,true);
+ const o=e.target.closest('[data-order]');
+ if(o)return openModal(o);
+ if(e.target.closest('[data-close]'))closeModal();
+});
+$('#back').onclick=()=>go(S.step-1,true);
+$('#next').onclick=e=>S.step===3?openModal(e.currentTarget):go(S.step+1,true);
+document.addEventListener('keydown',e=>{
+ if($('#modal').classList.contains('hidden'))return;
+ if(e.key==='Escape')return closeModal();
+ if(e.key!=='Tab')return;
+ const f=[...$('#panel').querySelectorAll('button,input')].filter(x=>x.offsetParent&&!x.disabled);
+ if(!f.length)return;
+ const first=f[0],last=f[f.length-1];
+ if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+ else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+});
+
+build();update();go(0);
+</script>
+</body>
+</html>
